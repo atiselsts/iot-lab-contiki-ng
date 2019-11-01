@@ -41,6 +41,7 @@
 #include "net/packetbuf.h"
 #include "sys/rtimer.h"
 #include "dev/leds.h"
+#include "sys/energest.h"
 
 /*---------------------------------------------------------------------------*/
 
@@ -273,6 +274,8 @@ rf2xx_wr_transmit(unsigned short transmit_len)
     // Start TX
     rf2xx_slp_tr_set(RF2XX_DEVICE);
 
+    ENERGEST_SWITCH(ENERGEST_TYPE_LISTEN, ENERGEST_TYPE_TRANSMIT);
+
 #if !RF2XX_WITH_TSCH
     // Wait until the end of the packet
     while (rf2xx_state == RF_TX);
@@ -284,6 +287,7 @@ rf2xx_wr_transmit(unsigned short transmit_len)
     ret = RADIO_TX_OK;
 #endif /* RF2XX_WITH_TSCH */
 
+    ENERGEST_SWITCH(ENERGEST_TYPE_TRANSMIT, ENERGEST_TYPE_LISTEN);
 
 #ifdef RF2XX_LEDS_ON
     leds_off(LEDS_RED);
@@ -821,6 +825,8 @@ static void idle(void)
     // Force IDLE
     rf2xx_set_state(RF2XX_DEVICE, RF2XX_TRX_STATE__FORCE_PLL_ON);
 
+    ENERGEST_OFF(ENERGEST_TYPE_LISTEN);
+
     // If radio has external PA, disable DIG3/4
     if (rf2xx_has_pa(RF2XX_DEVICE))
     {
@@ -861,6 +867,7 @@ static void listen(void)
     // Start RX
     platform_enter_critical();
     rf2xx_state = RF_LISTEN;
+    ENERGEST_ON(ENERGEST_TYPE_LISTEN);
     rf2xx_set_state(RF2XX_DEVICE, RF2XX_TRX_STATE__RX_ON);
     platform_exit_critical();
 }
